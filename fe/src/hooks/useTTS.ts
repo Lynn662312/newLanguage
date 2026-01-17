@@ -48,8 +48,10 @@ export const useTTS = () => {
 
                 audio.onended = () => {
                     setPlayingId(null)
+                    window.dispatchEvent(new CustomEvent('newLanguage-tts-end'))
                 }
 
+                window.dispatchEvent(new CustomEvent('newLanguage-tts-start'))
                 await audio.play()
             } else {
                 setLoadingId(null)

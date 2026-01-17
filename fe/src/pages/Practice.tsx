@@ -90,10 +90,20 @@ const Practice = () => {
              if (url) {
                  const audio = new Audio(url);
                  if (audioRef.current) {
-                     audioRef.current.pause(); // Stop previous
+                     audioRef.current.pause(); 
+                     window.dispatchEvent(new CustomEvent('newLanguage-tts-end'))
                  }
                  audioRef.current = audio;
-                 audio.play().catch(e => console.error("Auto-play blocked", e));
+                 
+                 audio.onended = () => {
+                     window.dispatchEvent(new CustomEvent('newLanguage-tts-end'))
+                 }
+
+                 window.dispatchEvent(new CustomEvent('newLanguage-tts-start'))
+                 audio.play().catch(e => {
+                     console.error("Auto-play blocked", e)
+                     window.dispatchEvent(new CustomEvent('newLanguage-tts-end'))
+                 });
              }
          });
      }
@@ -146,16 +156,24 @@ const Practice = () => {
       // Stop
       audioRef.current?.pause()
       setPlayingAudioId(null)
+      window.dispatchEvent(new CustomEvent('newLanguage-tts-end'))
     } else {
       // Start new
       if (audioRef.current) {
         audioRef.current.pause()
+        window.dispatchEvent(new CustomEvent('newLanguage-tts-end'))
       }
       const audio = new Audio(url)
       audioRef.current = audio
       setPlayingAudioId(id)
+
+      audio.onended = () => {
+          setPlayingAudioId(null)
+          window.dispatchEvent(new CustomEvent('newLanguage-tts-end'))
+      }
+      
+      window.dispatchEvent(new CustomEvent('newLanguage-tts-start'))
       audio.play()
-      audio.onended = () => setPlayingAudioId(null)
     }
   }
 
@@ -801,7 +819,58 @@ const Practice = () => {
          </div>
       </div>
 
-      {/* Animation Styles */}
+      {/* Floating Analysis Panel (Initially Hidden on Mobile) */}
+      <div id="mobile-analysis-panel" className="hidden lg:hidden fixed inset-0 bg-black/50 z-40 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm h-[80vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out]">
+             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                 <h3 className="font-bold text-gray-800">Live Analysis</h3>
+                 <button 
+                    onClick={() => document.getElementById('mobile-analysis-panel')?.classList.add('hidden')}
+                    className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm text-gray-500"
+                 >
+                    ✕
+                 </button>
+             </div>
+             <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+                 {/* AI Avatar */}
+                 <div className="flex justify-center items-center py-6 mb-4 bg-white shadow-sm rounded-2xl border border-gray-100 min-h-[180px]">
+                     <TalkingAvatar 
+                        isSpeaking={playingAudioId !== null && conversation.find(m => m.id === playingAudioId)?.sender === 'ai'} 
+                     />
+                 </div>
+                 
+                 {/* Feedback List */}
+                 <div className="space-y-3">
+                   {sessionFeedback.length === 0 ? (
+                      <div className="text-center text-gray-400 py-4">
+                         <p className="text-sm">Start talking to get feedback!</p>
+                      </div>
+                   ) : (
+                      [...sessionFeedback].reverse().map((item, idx) => (
+                         <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                            <div className="flex items-start justify-between mb-2">
+                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                  item.type === 'grammar' ? 'bg-red-50 text-red-500' :
+                                  item.type === 'vocabulary' ? 'bg-blue-50 text-blue-500' :
+                                  'bg-orange-50 text-orange-500'
+                               }`}>
+                                 {item.type}
+                               </span>
+                            </div>
+                            <p className="text-gray-400 text-xs mb-1 line-through">{item.original}</p>
+                            <p className="text-gray-800 text-sm font-medium mb-2">{item.improved}</p>
+                            <div className="bg-gray-50 p-2 rounded-lg">
+                               <p className="text-xs text-gray-600 leading-relaxed">
+                                 <span className="font-bold">Why:</span> {item.explanation}
+                               </p>
+                            </div>
+                         </div>
+                      ))
+                   )}
+                 </div>
+             </div>
+          </div>
+      </div>
       <style>{`
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(10px); }

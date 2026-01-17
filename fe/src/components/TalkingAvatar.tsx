@@ -20,7 +20,7 @@ const TalkingAvatar = ({ isSpeaking }: TalkingAvatarProps) => {
       // User said "1 sec", usually implies period. Let's try 500ms per frame (1s cycle).
       interval = setInterval(() => {
         setCurrentImg((prev) => (prev === "img1" ? "img2" : "img1"))
-      }, 500)
+      }, 100)
     } else {
       // Reset to closed mouth/default when stopped
       setCurrentImg("img1")

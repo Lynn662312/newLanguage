@@ -65,6 +65,13 @@ const Practice = () => {
   const transcriptRef = useRef("")
   const accumulatedTranscriptRef = useRef("")
 
+  // Audio Analysis Refs
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+  const [audioLevel, setAudioLevel] = useState(0)
+
   useEffect(() => {
     // Initialize Speech Recognition
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -226,6 +233,37 @@ const Practice = () => {
           // 1. Get Microphone Stream for Audio Recording
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
           
+          // --- Audio Analysis Setup ---
+          if (!audioContextRef.current) {
+              audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+          }
+          const ctx = audioContextRef.current
+          if (ctx.state === 'suspended') {
+              await ctx.resume()
+          }
+          
+          const analyser = ctx.createAnalyser()
+          analyser.fftSize = 256
+          const source = ctx.createMediaStreamSource(stream)
+          source.connect(analyser)
+          
+          analyserRef.current = analyser
+          sourceRef.current = source
+          
+          const updateVolume = () => {
+              if (!isRecordingRef.current) return
+              const dataArray = new Uint8Array(analyser.frequencyBinCount)
+              analyser.getByteFrequencyData(dataArray)
+              
+              const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length
+              // Normalize (0-255) -> 0.0 to ~1.0 + boost
+              const normalized = Math.min(average / 50, 0.6) // More sensitive visual
+              setAudioLevel(normalized)
+              
+              animationFrameRef.current = requestAnimationFrame(updateVolume)
+          }
+          // ----------------------------
+          
           // 2. Setup MediaRecorder
           const mediaRecorder = new MediaRecorder(stream)
           mediaRecorderRef.current = mediaRecorder
@@ -243,117 +281,61 @@ const Practice = () => {
               const audioUrl = URL.createObjectURL(audioBlob)
               
               console.log("Recorded Blob Size:", audioBlob.size, "Type:", audioBlob.type)
+
+              // Check for silence/empty recording (Threshold lowered to allow short words)
+              // "more sensitive to listen" - lowered from 1000 to 100
+              if (audioBlob.size < 100) {
+                  console.warn("Audio file is too small (Silence detected). Size:", audioBlob.size)
+                  addMessage("ai", "I didn't hear anything! Try holding the button longer.")
+                  setStatus("idle")
+                  return
+              }
               
               // Stop all tracks to release mic
               stream.getTracks().forEach(track => track.stop())
               
+              // Cleanup Audio Analysis
+              if (animationFrameRef.current) {
+                  cancelAnimationFrame(animationFrameRef.current)
+                  animationFrameRef.current = null
+              }
+              if (sourceRef.current) {
+                  sourceRef.current.disconnect()
+                  sourceRef.current = null
+              }
+              setAudioLevel(0)
+              
               setStatus("processing")
 
               try {
-                  const formData = new FormData()
-                  // IMPORTANT: Filename explicitly set for Whisper
-                  formData.append("file", audioBlob, "recording.webm") 
-                  formData.append("topic", selectedTopic)
+                  console.log("Sending audio to OpenAI (Client-side)...")
+                  
+                  // 1. Transcribe (Client-Side)
+                  const transcript = await transcribeAudioClient(audioBlob)
+                  console.log("Whisper Transcript:", transcript)
 
-                  console.log("Sending audio to backend...")
-                  
-                  const response = await fetch("http://localhost:8000/api/practice/voice", {
-                      method: "POST",
-                      body: formData
-                  })
-                  
-                  console.log("Backend Response Status:", response.status)
-                  
-                  if (!response.ok) {
-                      throw new Error(`Upload failed: ${response.statusText}`)
-                  }
-                  
-                  const data = await response.json()
-                  console.log("Backend Data:", data)
-                  
-                  if (data.success) {
-                      const transcript = data.transcript
-                      
-                      // 1. Add User Message (Text + Audio)
-                      addMessage("user", transcript, audioUrl)
-                      
-                      // 2. Add AI Reply (Improved Text or Error Analysis)
-                      const reply = data.entry.improved_text
-                      addMessage("ai", reply)
-                      
-                      // Store feedback if present
-                      if (data.entry.errors && data.entry.errors.length > 0) {
-                          const feedbackItem: FeedbackPoint = {
-                              type: "grammar",
-                              original: transcript,
-                              improved: data.entry.improved_text,
-                              explanation: data.entry.errors[0].explanation
-                          }
-                          setSessionFeedback(prev => [...prev, feedbackItem])
-                      }
+                  // 2. Process whatever OpenAI returns
+                  if (transcript && transcript.trim()) {
+                       await processUserInput(transcript, audioUrl) 
+                  } else {
+                       console.warn("Empty transcript from OpenAI")
+                       setStatus("idle")
                   }
                   
               } catch (error) {
                   console.error("Voice Processing Error:", error)
                   addMessage("ai", "Sorry, I couldn't process your audio. Please try again.")
-              } finally {
                   setStatus("idle")
-                  accumulatedTranscriptRef.current = ""
-                  transcriptRef.current = "" 
               }
+              // Note: processUserInput sets status to "idle" or "speaking" when done
           }
 
-          // 3. Setup Speech Recognition
-          transcriptRef.current = "" // Reset current session transcript
-          accumulatedTranscriptRef.current = "" // Reset total transcript
-          
-          recognitionRef.current.onresult = (event: any) => {
-              // Just logging for now
-              const transcript = Array.from(event.results)
-                  .map((result: any) => result[0].transcript)
-                  .join(' ')
-              console.log("Live Transcript (ignored):", transcript)
-          }
-
-          recognitionRef.current.onerror = (event: any) => {
-              // "no-speech" means silence. We ignore it because onend will fire, 
-              // and we will simply restart listening if the user is still recording.
-              if (event.error === 'no-speech') {
-                  // console.warn("Silence detected, will restart...")
-                  return 
-              }
-              
-              console.error("Speech Error", event.error)
-              // If permission denied, we must stop
-              if (event.error === 'not-allowed') {
-                  setStatus("idle")
-                  isRecordingRef.current = false
-                  alert("Microphone permission denied.")
-              }
-          }
-
-          recognitionRef.current.onend = () => {
-              // Keep the restart logic to allow long recordings
-              if (isRecordingRef.current) {
-                  try {
-                      recognitionRef.current.start()
-                  } catch (e) {
-                      isRecordingRef.current = false
-                      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-                          mediaRecorderRef.current.stop()
-                      }
-                  }
-              } else {
-                  // User manually stopped -> Stop Recorder
-                  if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-                      mediaRecorderRef.current.stop()
-                  }
-              }
-          }
+          // ... unrecognized/onend listeners ... 
 
           // 4. Start Both
           // Important: Start recorder first, then speech recognition
-          mediaRecorder.start()
+          // Pass 200ms timeslice to ensure 'ondataavailable' fires frequently
+          mediaRecorder.start(200)
           try {
             recognitionRef.current.start()
           } catch (e) {
@@ -361,6 +343,10 @@ const Practice = () => {
           }
           
           setStatus("recording")
+          isRecordingRef.current = true
+          
+          // Start Visualizer Loop
+          updateVolume()
           isRecordingRef.current = true
 
       } catch (err) {
@@ -372,6 +358,17 @@ const Practice = () => {
     } else if (status === "recording") {
       // User tapped Stop manually.
       isRecordingRef.current = false
+      
+      // Cleanup Audio Analysis
+      if (animationFrameRef.current) {
+         cancelAnimationFrame(animationFrameRef.current)
+         animationFrameRef.current = null
+      }
+      if (sourceRef.current) {
+         sourceRef.current.disconnect()
+         sourceRef.current = null
+      }
+      setAudioLevel(0)
       // 1. Stop Speech
       recognitionRef.current.stop()
       // 2. Stop Recorder explicitly if needed (though speech.onend covers it, explict is safer)
@@ -549,9 +546,12 @@ const Practice = () => {
                <button
                 onClick={handleMicClick}
                 disabled={status === "processing" || status === "speaking" || status === "initializing"}
+                style={{
+                    transform: status === "recording" ? `scale(${1 + audioLevel})` : 'scale(1)',
+                }}
                 className={`
-                  w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200
-                  ${status === "recording" ? "bg-red-500 scale-110 shadow-lg shadow-red-500/30" : "bg-mintDark shadow-lg shadow-mint/30 hover:scale-105"}
+                  w-16 h-16 rounded-full flex items-center justify-center transition-all duration-75 ease-out
+                  ${status === "recording" ? "bg-red-500 shadow-lg shadow-red-500/30" : "bg-mintDark shadow-lg shadow-mint/30 hover:scale-105"}
                   ${(status === "processing" || status === "speaking" || status === "initializing") ? "bg-gray-200 cursor-not-allowed opacity-50" : ""}
                 `}
               >

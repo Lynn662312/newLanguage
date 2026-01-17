@@ -564,49 +564,21 @@ const Practice = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                {/* Native Language */}
-                <div className="space-y-2">
-                    <label className="block text-sm font-bold text-gray-700 ml-1">Native Language</label>
-                    <div className="relative">
-                        <select 
-                            value={nativeLanguage}
-                            onChange={(e) => setNativeLanguage(e.target.value)}
-                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl appearance-none focus:border-mint focus:ring-1 focus:ring-mint outline-none transition-all cursor-pointer font-medium text-gray-700"
-                        >
-                            <option value="" disabled>Select your native language</option>
-                            {LANGUAGES.map(lang => (
-                                <option key={lang} value={lang}>{lang}</option>
-                            ))}
-                        </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                           </svg>
-                        </div>
-                    </div>
-                </div>
+                <LanguageSelector 
+                    label="Native Language"
+                    value={nativeLanguage}
+                    onChange={setNativeLanguage}
+                    options={LANGUAGES}
+                    placeholder="Select native language"
+                />
 
-                {/* Second Language */}
-                <div className="space-y-2">
-                    <label className="block text-sm font-bold text-gray-700 ml-1">Second Language</label>
-                    <div className="relative">
-                        <select 
-                            value={secondLanguage}
-                            onChange={(e) => setSecondLanguage(e.target.value)}
-                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl appearance-none focus:border-mint focus:ring-1 focus:ring-mint outline-none transition-all cursor-pointer font-medium text-gray-700"
-                        >
-                            <option value="" disabled>Select your second language</option>
-                             {LANGUAGES.map(lang => (
-                                <option key={lang} value={lang}>{lang}</option>
-                            ))}
-                        </select>
-                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                           </svg>
-                        </div>
-                    </div>
-                </div>
+                <LanguageSelector 
+                    label="Second Language"
+                    value={secondLanguage}
+                    onChange={setSecondLanguage}
+                    options={LANGUAGES}
+                    placeholder="Select second language"
+                />
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-50">
@@ -886,3 +858,111 @@ const Practice = () => {
 }
 
 export default Practice
+
+// Custom Language Selector Component
+const LanguageSelector = ({ 
+    label, 
+    value, 
+    onChange, 
+    options, 
+    placeholder 
+}: { 
+    label: string, 
+    value: string, 
+    onChange: (val: string) => void, 
+    options: string[], 
+    placeholder: string 
+}) => {
+    const [isOpen, setIsOpen] = useState(false)
+    const [searchTerm, setSearchTerm] = useState("")
+    const wrapperRef = useRef<HTMLDivElement>(null)
+
+    // Close on click outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+                setIsOpen(false)
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [])
+
+    const filteredOptions = options.filter(opt => 
+        opt.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+
+    return (
+        <div className="space-y-2 relative" ref={wrapperRef}>
+            <label className="block text-sm font-bold text-gray-700 ml-1">{label}</label>
+            
+            {/* Trigger (Looks like Text Field) */}
+            <div 
+                onClick={() => setIsOpen(!isOpen)}
+                className={`
+                    w-full p-4 bg-gray-50 border rounded-xl flex items-center justify-between cursor-pointer transition-all
+                    ${isOpen ? 'border-mint ring-1 ring-mint bg-white' : 'border-gray-200 hover:border-gray-300'}
+                `}
+            >
+                <span className={value ? "text-gray-900 font-medium" : "text-gray-400"}>
+                    {value || placeholder}
+                </span>
+                <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+
+            {/* Dropdown Menu (Dark Glassmorphism) */}
+            {isOpen && (
+                <div className="absolute top-full left-0 right-0 mt-2 z-50 animate-[slideDown_0.2s_ease-out]">
+                    <div className="bg-slate-800/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden text-white">
+                        
+                        {/* Search Bar */}
+                        <div className="p-3 border-b border-white/10">
+                            <input 
+                                type="text"
+                                placeholder="Search language..."
+                                className="w-full bg-slate-700/50 text-white placeholder-gray-400 text-sm px-3 py-2 rounded-lg border-none focus:ring-1 focus:ring-mint outline-none"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                            />
+                        </div>
+
+                        {/* Options List */}
+                        <div className="max-h-60 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
+                            {filteredOptions.length > 0 ? (
+                                filteredOptions.map(option => (
+                                    <div 
+                                        key={option}
+                                        onClick={() => {
+                                            onChange(option)
+                                            setIsOpen(false)
+                                            setSearchTerm("")
+                                        }}
+                                        className={`
+                                            px-3 py-2.5 rounded-lg cursor-pointer flex items-center justify-between text-sm transition-colors
+                                            ${value === option ? 'bg-mint/20 text-mint' : 'hover:bg-white/10 text-gray-200'}
+                                        `}
+                                    >
+                                        <span>{option}</span>
+                                        {value === option && (
+                                            <svg className="w-4 h-4 text-mint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="p-4 text-center text-gray-400 text-xs">
+                                    No languages found
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}

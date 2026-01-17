@@ -1,0 +1,43 @@
+[
+  {
+    "id": "session_123",
+    "date": "2026-01-17T08:00:00.000Z",
+    "topic": "Travel Directions",
+    "inputType": "voice",
+    "transcript": "Full conversation transcript here...",
+    "scores": {
+      "clarity": 85,
+      "grammar": 60,
+      "vocabulary": 50
+    },
+    "conversation": [
+        {
+            "id": "1",
+            "sender": "ai",
+            "text": "Hi! Where are you going today?",
+            "timestamp": "2026-01-17T08:00:05.000Z"
+        },
+        {
+            "id": "2",
+            "sender": "user",
+            "text": "I want to go to the station for buy ticket.",
+            "audioUrl": "https://api.example.com/recordings/rec_123.mp3",
+            "timestamp": "2026-01-17T08:00:15.000Z"
+        }
+    ],
+    "feedback": [
+      {
+        "type": "vocabulary",
+        "original": "want to",
+        "improved": "would like to",
+        "explanation": "Use 'would like' for politeness in service interactions."
+      },
+      {
+        "type": "grammar",
+        "original": "for buy",
+        "improved": "to buy",
+        "explanation": "'To buy' creates purpose; 'for buy' is incorrect grammar."
+      }
+    ]
+  }
+]

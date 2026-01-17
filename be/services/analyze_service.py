@@ -2,8 +2,8 @@
 import json
 import httpx
 from typing import List, Dict, Any
-from config import OPENAI_API_KEY, OPENAI_MODEL, OPENAI_BASE_URL
-from models import ErrorItem, DifficultWord
+from ..config import OPENAI_API_KEY, OPENAI_MODEL, OPENAI_BASE_URL
+from ..models import ErrorItem, DifficultWord
 
 
 async def analyze_text(text: str, language: str = "en") -> Dict[str, Any]:

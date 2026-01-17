@@ -3,8 +3,8 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes import intent, practice, notes
-from config import AUDIO_DIR
+from .routes import intent, practice, notes
+from .config import AUDIO_DIR
 
 app = FastAPI(
     title="Oral Practice API",
@@ -40,10 +40,9 @@ async def root():
     }
 
 
-@app.get("/health")
-async def health():
-    """Health check endpoint."""
-    return {"status": "healthy"}
+@app.get("/api/test")
+async def test():
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":

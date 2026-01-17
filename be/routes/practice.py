@@ -1,9 +1,9 @@
 """Routes for practice submission."""
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
-from models import PracticeSubmission, PracticeResponse, NotebookEntry
-from services.analyze_service import analyze_text
-from storage import add_entry, generate_entry_id
+from ..models import PracticeSubmission, PracticeResponse, NotebookEntry
+from be.services.analyze_service import analyze_text
+from ..storage import add_entry, generate_entry_id
 
 router = APIRouter(prefix="/api/practice", tags=["practice"])
 

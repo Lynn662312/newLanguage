@@ -1,7 +1,7 @@
 """Routes for intent recognition and confirmation."""
 from fastapi import APIRouter, HTTPException
-from models import IntentRequest, IntentResponse, IntentConfirmRequest, IntentConfirmResponse
-from services.tts_service import text_to_speech
+from ..models import IntentRequest, IntentResponse, IntentConfirmRequest, IntentConfirmResponse
+from be.services.tts_service import text_to_speech
 
 router = APIRouter(prefix="/api/intent", tags=["intent"])
 

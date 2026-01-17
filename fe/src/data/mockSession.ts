@@ -18,6 +18,7 @@ export interface ChatMessage {
     text: string
     audioUrl?: string
     timestamp: string
+    feedback?: FeedbackPoint // Linked feedback for this specific message
 }
 
 export interface SessionResult {

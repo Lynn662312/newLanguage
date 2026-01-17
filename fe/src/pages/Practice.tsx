@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { saveSession, MOCK_SESSION_VOICE, MOCK_SESSION_TEXT } from "../data/mockSession"
-import type { ChatMessage } from "../data/mockSession"
+import { saveSession } from "../data/mockSession"
+import type { ChatMessage, SessionResult, FeedbackPoint } from "../data/mockSession"
+import { generateCombinedResponse } from "../services/ai"
 
 const TOPICS = [
   "Ordering Coffee ☕️",
@@ -9,6 +10,12 @@ const TOPICS = [
   "Travel Directions 🗺️",
   "Casual Chat 👋"
 ]
+
+// Add Web Speech API Type Definitions
+interface Window {
+  SpeechRecognition: any
+  webkitSpeechRecognition: any
+}
 
 const Practice = () => {
   const navigate = useNavigate()
@@ -36,11 +43,32 @@ const Practice = () => {
   const [conversation, setConversation] = useState<ChatMessage[]>(savedSession?.conversation || [])
   const [suggestion, setSuggestion] = useState<{ text: string, visible: boolean } | null>(null)
   
+  // Store real accumulated feedback
+  const [sessionFeedback, setSessionFeedback] = useState<FeedbackPoint[]>(savedSession?.sessionFeedback || [])
+
   // Audio Playback State
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Speech Recognition & Media Recorder Refs
+  const recognitionRef = useRef<any>(null)
+  const isRecordingRef = useRef(false)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const transcriptRef = useRef("")
+
+  useEffect(() => {
+    // Initialize Speech Recognition
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition()
+      recognitionRef.current.continuous = false // Stop after one sentence/phrase
+      recognitionRef.current.interimResults = false
+      recognitionRef.current.lang = 'en-US'
+    }
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -76,10 +104,11 @@ const Practice = () => {
         phase,
         mode,
         topic: selectedTopic,
-        conversation
+        conversation,
+        sessionFeedback
       }))
     }
-  }, [phase, mode, selectedTopic, conversation])
+  }, [phase, mode, selectedTopic, conversation, sessionFeedback])
 
   const startSession = (topic: string) => {
     setSelectedTopic(topic)
@@ -101,39 +130,168 @@ const Practice = () => {
     setConversation(prev => [...prev, newMessage])
   }
 
-  const handleMicClick = () => {
-    if (status === "idle") {
-      setStatus("recording")
-    } else if (status === "recording") {
-      setStatus("processing")
-      // Simulate processing
-      setTimeout(() => {
-        // Create a Mock Blob URL to simulate local recording (not an online link)
-        // In a real app, this comes from MediaRecorder.
-        // We use a dummy blob just to generate a valid blob: URL for the UI.
-        const mockBlob = new Blob([], { type: 'audio/webm' }) 
-        const mockUrl = URL.createObjectURL(mockBlob)
+  // Helper to process User Input (Text or Voice Transcribed)
+  const processUserInput = async (text: string, audioUrl?: string) => {
+    const userMsgId = Date.now().toString()
+    
+    // 1. Add User Message
+    const userMsg: ChatMessage = {
+      id: userMsgId,
+      sender: "user",
+      text,
+      audioUrl,
+      timestamp: new Date().toISOString()
+    }
+    
+    // Update state functionally to ensure we have the latest
+    setConversation(prev => [...prev, userMsg])
+    
+    // Status to speaking (waiting for AI)
+    setStatus("speaking")
 
-        // User Message with Blob URL
-        addMessage("user", "Microphone simulation text (I want to go to London)", mockUrl)
-        setStatus("idle")
-        
-        // Simulating Real-time Tip
-        setSuggestion({
-            text: "Tip: Try saying 'I would like to go' for more politeness.",
-            visible: true
-        })
-        // Auto-hide suggestion after 5s
-        setTimeout(() => setSuggestion(null), 5000)
-        
-        // AI Reply simulation
-        setStatus("speaking")
-        setTimeout(() => {
-          addMessage("ai", "That sounds exciting! London is great. When are you planning to go?")
+    // 2. Construct Context
+    // We use the functional state updater's result concept, or just access 'conversation' + new msg
+    // Since 'conversation' in closure might be stale, we trust the slice(-10) logic but append current txt
+    const historyContext = conversation.slice(-10).map(m => ({
+        role: m.sender === "user" ? "user" : "assistant",
+        content: m.text
+    })) as { role: "user" | "assistant", content: string }[]
+    
+    historyContext.push({ role: "user", content: text })
+
+    // 3. One Single AI Call
+    const aiResult = await generateCombinedResponse(text, selectedTopic, historyContext)
+
+    if (aiResult) {
+        let feedbackItem: FeedbackPoint | undefined
+
+        // A) Process Feedback
+        if (aiResult.improvements && aiResult.improvements.length > 0) {
+            const bestTip = aiResult.improvements[0]
+            setSuggestion({
+                text: `Tip: ${bestTip.suggestion} (${bestTip.issue})`,
+                visible: true
+            })
+            setTimeout(() => setSuggestion(null), 8000)
+
+            // Create formatted feedback item
+            feedbackItem = {
+                type: bestTip.type as any,
+                original: text, 
+                improved: bestTip.suggestion,
+                explanation: bestTip.issue
+            }
+
+            // Store global session feedback
+            setSessionFeedback(prev => [...prev, feedbackItem!])
+            
+            // LINK FEEDBACK TO USER MESSAGE
+            // We update the conversation to attach this feedback to the message we just sent
+            setConversation(prev => prev.map(msg => 
+                msg.id === userMsgId ? { ...msg, feedback: feedbackItem } : msg
+            ))
+        }
+
+        // B) Add AI Reply
+        if (aiResult.reply) {
+            addMessage("ai", aiResult.reply)
+        } else {
+             addMessage("ai", "I heard you, but I didn't know what to say!")
+        }
+
+    } else {
+        addMessage("ai", "Sorry, I lost my connection. Please try again.")
+    }
+
+    setStatus("idle")
+  }
+
+  const handleMicClick = async () => {
+    if (!recognitionRef.current) {
+        alert("Your browser does not support Speech Recognition. Try Chrome or Safari.")
+        return
+    }
+
+    if (status === "idle") {
+      try {
+          // 1. Get Microphone Stream for Audio Recording
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          
+          // 2. Setup MediaRecorder
+          const mediaRecorder = new MediaRecorder(stream)
+          mediaRecorderRef.current = mediaRecorder
+          audioChunksRef.current = []
+          
+          mediaRecorder.ondataavailable = (event) => {
+              if (event.data.size > 0) {
+                  audioChunksRef.current.push(event.data)
+              }
+          }
+
+          mediaRecorder.onstop = () => {
+              // Create Audio Blob
+              const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }) // Use audio/webm for browser compatibility
+              const audioUrl = URL.createObjectURL(audioBlob)
+              
+              // Stop all tracks to release mic
+              stream.getTracks().forEach(track => track.stop())
+              
+              // If we have a transcript, process it now
+              if (transcriptRef.current.trim()) {
+                  setStatus("processing")
+                  processUserInput(transcriptRef.current, audioUrl)
+              } else {
+                  setStatus("idle")
+              }
+          }
+
+          // 3. Setup Speech Recognition
+          transcriptRef.current = "" // Reset transcript
+          
+          recognitionRef.current.onresult = (event: any) => {
+              const transcript = event.results[0][0].transcript
+              console.log("Recognized:", transcript)
+              transcriptRef.current = transcript
+              // We DON'T call processUserInput here manually anymore. 
+              // We wait for MediaRecorder.onstop to fire to ensure we have the audio.
+          }
+
+          recognitionRef.current.onerror = (event: any) => {
+              console.error("Speech Error", event.error)
+              // If error, likely no transcript or partial. 
+              // We'll let onend handle the stop logic.
+          }
+
+          recognitionRef.current.onend = () => {
+              // Speech ended (silence or stop).
+              // Ensure MediaRecorder also stops if it's running
+              if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+                  mediaRecorderRef.current.stop()
+              }
+              // Reset recording flag
+              isRecordingRef.current = false
+          }
+
+          // 4. Start Both
+          setStatus("recording")
+          isRecordingRef.current = true
+          mediaRecorder.start()
+          recognitionRef.current.start()
+
+      } catch (err) {
+          console.error("Microphone Access Error:", err)
+          alert("Could not access microphone. Please allow permissions.")
           setStatus("idle")
-        }, 1500)
-        
-      }, 1500)
+      }
+
+    } else if (status === "recording") {
+      // User tapped Stop manually.
+      // 1. Stop Speech (triggers onend)
+      recognitionRef.current.stop()
+      // 2. Stop Recorder (will be triggered by speech.onend, but we can double tap safely)
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+          mediaRecorderRef.current.stop()
+      }
     }
   }
 
@@ -143,33 +301,27 @@ const Practice = () => {
 
     const txt = textInput
     setTextInput("") // clear input immediately
-    addMessage("user", txt)
-
-    // Simulating Real-time Tip for Text
-    if (txt.toLowerCase().includes("want")) {
-         setSuggestion({
-            text: "Better: 'I would like' is more formal than 'I want'.",
-            visible: true
-        })
-        setTimeout(() => setSuggestion(null), 5000)
-    }
-    
-    // AI Reply simulation
-    setStatus("speaking")
-    setTimeout(() => {
-      addMessage("ai", "Interesting point! Tell me more about that.")
-      setStatus("idle")
-    }, 1500)
+    processUserInput(txt)
   }
 
   const endSession = () => {
-    // Save correct mock based on dominant mode/random
-    const mockToSave = mode === 'voice' ? MOCK_SESSION_VOICE : MOCK_SESSION_TEXT
-    saveSession({
-      ...mockToSave,
-      topic: selectedTopic,
-      conversation: conversation // Save the actual chat
-    })
+    // Save Real Session Data
+    const newSession: SessionResult = {
+        id: "session_" + Date.now(),
+        date: new Date().toISOString(),
+        inputType: mode,
+        topic: selectedTopic,
+        transcript: conversation.map(m => `${m.sender}: ${m.text}`).join("\n"),
+        conversation: conversation,
+        scores: {
+            clarity: 80, // detailed scoring would require more AI logic
+            grammar: Math.max(100 - (sessionFeedback.length * 10), 50), // simple calc based on feedback count
+            vocabulary: 75
+        },
+        feedback: sessionFeedback
+    }
+
+    saveSession(newSession)
     
     // Clear the active session persistence
     localStorage.removeItem("active_practice_session")
@@ -280,6 +432,14 @@ const Practice = () => {
                  </div>
               )}
               <p className="leading-relaxed">{msg.text}</p>
+              
+              {/* Show Feedback Note if linked */}
+              {msg.feedback && (
+                  <div className="mt-2 text-xs bg-white/10 p-2 rounded-lg border border-white/20">
+                      <span className="font-bold text-yellow-300">Tip:</span> {msg.feedback.improved}
+                  </div>
+              )}
+              
             </div>
           </div>
         ))}

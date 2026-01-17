@@ -1,5 +1,46 @@
+import { useState, useRef } from "react"
+import { speakText } from "../services/ai"
+
 const About = () => {
-    return (
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  const handlePlay = async (id: string, text: string) => {
+    if (playingId === id) {
+      audioRef.current?.pause()
+      setPlayingId(null)
+      return
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause()
+    }
+
+    setLoadingId(id)
+
+    try {
+      const url = await speakText(text)
+      
+      if (url) {
+        const audio = new Audio(url)
+        audioRef.current = audio
+        setPlayingId(id)
+        setLoadingId(null)
+        
+        audio.onended = () => setPlayingId(null)
+        await audio.play()
+      } else {
+         setLoadingId(null)
+      }
+    } catch (e) {
+      console.error("Playback error", e)
+      setLoadingId(null)
+      setPlayingId(null)
+    }
+  }
+
+  return (
       <div className="w-full max-w-6xl mx-auto p-8 animate-[fadeIn_0.5s_ease-out]">
         
         {/* Hero Section */}
@@ -17,38 +58,53 @@ const About = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-12">
           
           {/* Card 1 */}
-          <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group">
-            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
-              🚀
+          <button 
+            onClick={() => handlePlay('feedback', "Instant Feedback. Stop guessing if you're right. Get immediate, AI-powered corrections on grammar, vocabulary, and pronunciation as you speak.")}
+            className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group text-left relative overflow-hidden w-full"
+          >
+            <div className={`w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform ${playingId === 'feedback' ? 'animate-pulse' : ''}`}>
+              {loadingId === 'feedback' ? (
+                 <div className="w-6 h-6 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+              ) : playingId === 'feedback' ? '🔊' : '🚀'}
             </div>
             <h3 className="text-2xl font-bold text-gray-800 mb-4">Instant Feedback</h3>
             <p className="text-gray-500 leading-relaxed">
               Stop guessing if you're right. Get immediate, AI-powered corrections on grammar, vocabulary, and pronunciation as you speak.
             </p>
-          </div>
+          </button>
   
           {/* Card 2 */}
-          <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
+          <button 
+             onClick={() => handlePlay('confidence', "Confidence First. Anxiety is the biggest barrier to fluency. Practice with a patient AI partner that never judges, available 24/7.")}
+             className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group relative overflow-hidden text-left w-full"
+          >
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-mint to-mintDark" />
-            <div className="w-16 h-16 bg-mintBg rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
-              💪
+            <div className={`w-16 h-16 bg-mintBg rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform ${playingId === 'confidence' ? 'animate-pulse' : ''}`}>
+              {loadingId === 'confidence' ? (
+                 <div className="w-6 h-6 border-2 border-mintDark border-t-transparent rounded-full animate-spin" />
+              ) : playingId === 'confidence' ? '🔊' : '💪'}
             </div>
             <h3 className="text-2xl font-bold text-gray-800 mb-4">Confidence First</h3>
             <p className="text-gray-500 leading-relaxed">
               Anxiety is the biggest barrier to fluency. Practice with a patient AI partner that never judges, available 24/7.
             </p>
-          </div>
+          </button>
   
           {/* Card 3 */}
-          <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group">
-            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
-              🧠
+          <button 
+            onClick={() => handlePlay('scenarios', 'Real Scenarios. Ditch the generic "cat is on the table" phrases. Roleplay actual situations like Job Interviews, ordering coffee, or travel.')}
+            className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group text-left w-full relative"
+          >
+            <div className={`w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform ${playingId === 'scenarios' ? 'animate-pulse' : ''}`}>
+               {loadingId === 'scenarios' ? (
+                 <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+              ) : playingId === 'scenarios' ? '🔊' : '🧠'}
             </div>
             <h3 className="text-2xl font-bold text-gray-800 mb-4">Real Scenarios</h3>
             <p className="text-gray-500 leading-relaxed">
               Ditch the generic "cat is on the table" phrases. Roleplay actual situations like Job Interviews, ordering coffee, or travel.
             </p>
-          </div>
+          </button>
   
         </div>
   

@@ -1,22 +1,32 @@
+import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 
 // We no longer use VITE_OPENAI_API_KEY or ELEVENLABS_KEY here directly.
 // All calls go to the backend.
 
 export const speakText = async (text: string): Promise<string | null> => {
     try {
-        const response = await fetch("/api/practice/tts", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text })
-        })
-
-        if (!response.ok) {
-            console.error("Backend TTS Error:", response.statusText)
-            return null
+        const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+        if (!apiKey) {
+            console.error("Missing VITE_ELEVENLABS_API_KEY");
+            return null;
         }
 
-        const data = await response.json()
-        return data.audio_url
+        const client = new ElevenLabsClient({ apiKey });
+        const audioStream = await client.textToSpeech.convert("21m00Tcm4TlvDq8ikWAM", {
+            text,
+            model_id: "eleven_multilingual_v2",
+            output_format: "mp3_44100_128",
+        });
+
+        // Convert the stream to a Blob
+        const chunks: BlobPart[] = [];
+        for await (const chunk of audioStream) {
+            chunks.push(chunk);
+        }
+
+        const blob = new Blob(chunks, { type: "audio/mpeg" });
+        return URL.createObjectURL(blob);
+
     } catch (error) {
         console.error("speakText Exception:", error)
         return null

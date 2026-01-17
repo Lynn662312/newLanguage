@@ -39,7 +39,8 @@ export default defineConfig({
   define: {
     // Map the backend OPENAI_API_KEY to the frontend VITE_OPENAI_API_KEY
     // JSON.stringify is crucial because 'define' does raw text replacement
-    'import.meta.env.VITE_OPENAI_API_KEY': JSON.stringify(backendEnv.OPENAI_API_KEY || '')
+    'import.meta.env.VITE_OPENAI_API_KEY': JSON.stringify(backendEnv.OPENAI_API_KEY || ''),
+    'import.meta.env.VITE_ELEVENLABS_API_KEY': JSON.stringify(backendEnv.ELEVENLABS_API_KEY || '')
   },
   server: {
     proxy: {

@@ -81,6 +81,56 @@ async def submit_practice(submission: PracticeSubmission):
         # Return generic error (don't expose internal details)
         raise HTTPException(status_code=500, detail="Failed to process practice. Please try again.")
 
+@router.post("/chat")
+async def chat_with_ai(submission: PracticeSubmission):
+    """
+    Chat endpoint - analyzes user text and returns feedback without saving to notebook.
+    This is for real-time practice feedback.
+    """
+    if not submission.text or not submission.text.strip():
+        raise HTTPException(status_code=400, detail="Text cannot be empty")
+    
+    # Validate languages
+    if not is_language_supported(submission.practice_language):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Sorry, we currently don't support '{submission.practice_language}'"
+        )
+    
+    if not is_language_supported(submission.native_language):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Sorry, we currently don't support '{submission.native_language}'"
+        )
+    
+    try:
+        # Analyze the text using GPT
+        analysis = await analyze_text(
+            submission.text,
+            practice_language=submission.practice_language,
+            native_language=submission.native_language
+        )
+        
+        # Return analysis without saving
+        return {
+            "success": True,
+            "original_text": submission.text,
+            "improved_text": analysis["improved_text"],
+            "errors": analysis["errors"],
+            "difficult_words": analysis["difficult_words"],
+            "feedback": f"Great practice! I found {len(analysis['errors'])} areas for improvement.",
+            "practice_language": submission.practice_language,
+            "native_language": submission.native_language
+        }
+        
+    except ValueError as e:
+        error_msg = str(e)
+        print(f"Configuration error: {error_msg}")
+        raise HTTPException(status_code=500, detail="Service configuration error.")
+    except Exception as e:
+        error_msg = str(e)
+        print(f"Error in chat: {error_msg}")
+        raise HTTPException(status_code=500, detail="Failed to process your message.")
 
 @router.post("/voice")
 async def process_voice(

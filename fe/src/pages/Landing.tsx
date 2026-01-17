@@ -24,7 +24,7 @@ const Landing = () => {
           <p className="text-gray-600 text-lg leading-relaxed">
             Practice a new language without the anxiety of being perfect. 
             <span className="block mt-2 text-sm text-gray-400 font-medium">
-              No history. Audio auto-deleted.
+              No history.   
             </span>
           </p>
         </div>

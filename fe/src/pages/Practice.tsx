@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { saveSession } from "../data/mockSession"
 import type { ChatMessage, SessionResult, FeedbackPoint } from "../data/mockSession"
-import { generateCombinedResponse, transcribeAudioClient } from "../services/ai"
+import { generateCombinedResponse, transcribeAudioClient, speakText } from "../services/ai"
+import TalkingAvatar from "../components/TalkingAvatar"
 
 // ... existing imports ...
 
@@ -14,6 +15,32 @@ const TOPICS = [
   "Job Interview 💼",
   "Travel Directions 🗺️",
   "Casual Chat 👋"
+]
+
+const LANGUAGES = [
+  "English",
+  "Spanish",
+  "French",
+  "German",
+  "Chinese (Mandarin)",
+  "Chinese (Cantonese)",
+  "Japanese",
+  "Korean",
+  "Italian",
+  "Portuguese",
+  "Russian",
+  "Arabic",
+  "Hindi",
+  "Dutch",
+  "Greek",
+  "Turkish",
+  "Polish",
+  "Swedish",
+  "Vietnamese",
+  "Thai",
+  "Indonesian",
+  "Malay",
+  "Filipino (Tagalog)"
 ]
 
 // Add Web Speech API Type Definitions
@@ -38,13 +65,15 @@ const Practice = () => {
 
   const savedSession = getSavedSession()
 
-  // "setup" = choosing topic, "chat" = active conversation
-  const [phase, setPhase] = useState<"setup" | "chat">(savedSession?.phase || "setup")
+  // "setup" = choosing topic, "language-setup" = choosing langs, "chat" = active conversation
+  const [phase, setPhase] = useState<"setup" | "language-setup" | "chat">(savedSession?.phase || "setup")
   const [mode, setMode] = useState<"voice" | "text">(savedSession?.mode || "voice")
   const [status, setStatus] = useState<"idle" | "recording" | "processing" | "speaking" | "initializing">("idle")
   
   const [textInput, setTextInput] = useState("")
   const [selectedTopic, setSelectedTopic] = useState(savedSession?.topic || "")
+  const [nativeLanguage, setNativeLanguage] = useState(savedSession?.nativeLanguage || "")
+  const [secondLanguage, setSecondLanguage] = useState(savedSession?.secondLanguage || "")
   const [conversation, setConversation] = useState<ChatMessage[]>(savedSession?.conversation || [])
   const [suggestion, setSuggestion] = useState<{ text: string, visible: boolean } | null>(null)
   
@@ -125,14 +154,29 @@ const Practice = () => {
 
   const startSession = (topic: string) => {
     setSelectedTopic(topic)
+    setPhase("language-setup")
+  }
+
+  const confirmLanguageSelection = () => {
+    if (!nativeLanguage || !secondLanguage) {
+        alert("Please select both languages to continue.")
+        return
+    }
+
     setPhase("chat")
     // Initial AI message
-    setTimeout(() => {
-      addMessage("ai", `Hi! Let's talk about ${topic}. How are you?`)
+    setTimeout(async () => {
+      const text = `Hi! Let's talk about ${selectedTopic}. How are you?`
+      const audioUrl = await speakText(text)
+      const msgId = addMessage("ai", text, audioUrl || undefined)
+      if (audioUrl) {
+          console.log("Auto-playing welcome message:", audioUrl)
+          toggleAudio(msgId, audioUrl)
+      }
     }, 500)
   }
 
-  const addMessage = (sender: "user" | "ai", text: string, audioUrl?: string) => {
+  const addMessage = (sender: "user" | "ai", text: string, audioUrl?: string): string => {
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
       sender,
@@ -141,6 +185,7 @@ const Practice = () => {
       timestamp: new Date().toISOString()
     }
     setConversation(prev => [...prev, newMessage])
+    return newMessage.id
   }
 
   // Helper to process User Input (Text or Voice Transcribed)
@@ -173,7 +218,13 @@ const Practice = () => {
     historyContext.push({ role: "user", content: text })
 
     // 3. One Single AI Call
-    const aiResult = await generateCombinedResponse(text, selectedTopic, historyContext)
+    const aiResult = await generateCombinedResponse(
+        text, 
+        selectedTopic, 
+        historyContext,
+        nativeLanguage,
+        secondLanguage
+    )
 
     if (aiResult) {
         let feedbackItem: FeedbackPoint | undefined
@@ -207,7 +258,10 @@ const Practice = () => {
 
         // B) Add AI Reply
         if (aiResult.reply) {
-            addMessage("ai", aiResult.reply)
+            const aiMsgId = addMessage("ai", aiResult.reply, aiResult.audioUrl || undefined)
+            if (aiResult.audioUrl) {
+                toggleAudio(aiMsgId, aiResult.audioUrl)
+            }
         } else {
              addMessage("ai", "I heard you, but I didn't know what to say!")
         }
@@ -456,6 +510,84 @@ const Practice = () => {
     )
   }
 
+  // --- LANGUAGE SETUP PHASE ---
+  if (phase === "language-setup") {
+    return (
+      <div className="min-h-[80vh] w-full bg-transparent flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-2xl bg-white p-8 rounded-3xl shadow-xl border border-gray-100 animate-[scaleIn_0.3s_ease-out]">
+            
+            <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-gray-900">Language Preferences</h2>
+                <p className="text-gray-500 mt-2">Choose the languages you are most comfortable using.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                {/* Native Language */}
+                <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700 ml-1">Native Language</label>
+                    <div className="relative">
+                        <select 
+                            value={nativeLanguage}
+                            onChange={(e) => setNativeLanguage(e.target.value)}
+                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl appearance-none focus:border-mint focus:ring-1 focus:ring-mint outline-none transition-all cursor-pointer font-medium text-gray-700"
+                        >
+                            <option value="" disabled>Select your native language</option>
+                            {LANGUAGES.map(lang => (
+                                <option key={lang} value={lang}>{lang}</option>
+                            ))}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                           </svg>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Second Language */}
+                <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700 ml-1">Second Language</label>
+                    <div className="relative">
+                        <select 
+                            value={secondLanguage}
+                            onChange={(e) => setSecondLanguage(e.target.value)}
+                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl appearance-none focus:border-mint focus:ring-1 focus:ring-mint outline-none transition-all cursor-pointer font-medium text-gray-700"
+                        >
+                            <option value="" disabled>Select your second language</option>
+                             {LANGUAGES.map(lang => (
+                                <option key={lang} value={lang}>{lang}</option>
+                            ))}
+                        </select>
+                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                           </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-50">
+                <button 
+                    onClick={() => setPhase("setup")}
+                    className="px-6 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-colors"
+                >
+                    Cancel
+                </button>
+                <button 
+                    onClick={confirmLanguageSelection}
+                    disabled={!nativeLanguage || !secondLanguage}
+                    className="px-8 py-3 bg-mintDark text-white rounded-xl font-bold shadow-lg shadow-mint/30 hover:bg-mintText hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed"
+                >
+                    Yes, Start Practice
+                </button>
+            </div>
+
+        </div>
+      </div>
+    )
+  }
+
   // --- CHAT PHASE ---
   return (
     <div className="flex-1 w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 my-4 px-4 h-[calc(100vh-100px)]">
@@ -593,6 +725,13 @@ const Practice = () => {
 
       {/* RIGHT COLUMN: Live Analysis (Grid Col Span 1) */}
       <div className="hidden lg:flex flex-col h-full space-y-4">
+         {/* AI Avatar */}
+         <div className="flex justify-center items-center py-6 bg-white/50 backdrop-blur-sm shadow-xl rounded-2xl border border-white/50 min-h-[200px]">
+             <TalkingAvatar 
+                isSpeaking={playingAudioId !== null && conversation.find(m => m.id === playingAudioId)?.sender === 'ai'} 
+             />
+         </div>
+
          <div className="bg-white/50 backdrop-blur-sm shadow-xl rounded-2xl flex-1 flex flex-col overflow-hidden border border-white/50">
            <div className="bg-mintBg/50 p-4 border-b border-mint/10">
               <h3 className="font-bold text-mintDark flex items-center gap-2">

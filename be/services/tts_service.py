@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 import uuid
 
-from config import (
+from ..config import (
     ELEVENLABS_API_KEY,
     ELEVENLABS_VOICE_ID,
     ELEVENLABS_BASE_URL,

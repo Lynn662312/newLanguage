@@ -1,8 +1,8 @@
 """Routes for notes CRUD operations."""
 from fastapi import APIRouter, HTTPException
 from typing import List
-from models import NotebookEntry, NotebookListResponse
-from storage import get_all_entries, get_entry_by_id
+from ..models import NotebookEntry, NotebookListResponse
+from ..storage import get_all_entries, get_entry_by_id
 
 router = APIRouter(prefix="/api/notes", tags=["notes"])
 

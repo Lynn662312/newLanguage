@@ -1,12 +1,12 @@
 """Routes for practice submission."""
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from datetime import datetime
+from ..models import PracticeSubmission, PracticeResponse, NotebookEntry
+from ..storage import add_entry, generate_entry_id
 import shutil
 import os
-from models import PracticeSubmission, PracticeResponse, NotebookEntry
-from services.analyze_service import analyze_text, transcribe_audio
-from storage import add_entry, generate_entry_id
-from config import AUDIO_DIR
+from be.services.analyze_service import analyze_text, transcribe_audio
+from ..config import AUDIO_DIR
 
 router = APIRouter(prefix="/api/practice", tags=["practice"])
 

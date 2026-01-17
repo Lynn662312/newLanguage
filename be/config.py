@@ -2,19 +2,20 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-
-load_dotenv()
+env_path = Path(__file__).parent.parent / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
 
 # API Keys
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # ElevenLabs Configuration
-ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")  # Default voice ID
+ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")  
 ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1"
 
 # OpenAI Configuration
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
 OPENAI_BASE_URL = "https://api.openai.com/v1"
 
 # Storage

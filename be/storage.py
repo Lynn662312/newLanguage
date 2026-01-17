@@ -5,8 +5,8 @@ from typing import List, Optional
 from datetime import datetime
 import uuid
 
-from config import NOTES_FILE
-from models import NotebookEntry
+from .config import NOTES_FILE
+from .models import NotebookEntry
 
 
 def load_notes() -> List[dict]:

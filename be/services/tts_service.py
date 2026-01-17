@@ -3,6 +3,7 @@ import httpx
 from pathlib import Path
 from typing import Optional
 import uuid
+# import os
 
 from ..config import (
     ELEVENLABS_API_KEY,
@@ -21,7 +22,8 @@ async def text_to_speech(text: str) -> Optional[str]:
         print("Warning: ELEVENLABS_API_KEY not set")
         return None
     
-    url = f"{ELEVENLABS_BASE_URL}/text-to-speech/{ELEVENLABS_VOICE_ID}"
+    # url = f"{ELEVENLABS_BASE_URL}/text-to-speech/{ELEVENLABS_VOICE_ID}"
+    url = f"{ELEVENLABS_BASE_URL}/text-to-speech/default/{ELEVENLABS_VOICE_ID}"
     
     headers = {
         "Accept": "audio/mpeg",
@@ -50,7 +52,7 @@ async def text_to_speech(text: str) -> Optional[str]:
             # Save the audio file
             with open(audio_path, "wb") as f:
                 f.write(response.content)
-            
+            print(f"Audio generated successfully: {audio_filename}")
             # Return the URL path (relative to /static/audio)
             return f"/static/audio/{audio_filename}"
             

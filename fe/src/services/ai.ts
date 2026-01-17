@@ -102,6 +102,8 @@ export const generateCombinedResponse = async (
         1. An improved version (keeping meaning/style)
         2. A list of grammar/vocab errors with simple explanations in '${nativeLanguage}'
         3. A conversational reply in '${secondLanguage}' as if we are chatting about '${topic}'.
+        4. A list of grammar/vocab errors with simple explanations in '${nativeLanguage}'
+        5. Do not change to another language if user did not request.
         
         Respond in this JSON format:
         {

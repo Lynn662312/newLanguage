@@ -4,11 +4,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
+from be.routes import scenario
+
 from .routes import intent, practice, notes
 from .config import AUDIO_DIR
 
 app = FastAPI(
-    title="Oral Practice",
+    title="speak and learn",
     description="oral practice application",
     version="1.0.0"
 )
@@ -30,13 +32,14 @@ app.mount("/static/audio", StaticFiles(directory=str(AUDIO_DIR)), name="audio")
 app.include_router(intent.router)
 app.include_router(practice.router)
 app.include_router(notes.router)
+app.include_router(scenario.router)
 
 
 @app.get("/")
 async def root():
     """Root endpoint."""
     return {
-        "message": "Oral Practice",
+        "message": "Welcome to the Speak and Learn API!",
         "version": "1.0.0",
         "docs": "/docs"
     }

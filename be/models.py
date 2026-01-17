@@ -133,3 +133,18 @@ class AudioTranscribeResponse(BaseModel):
     """Response model for audio transcription."""
     text: str
     language: str
+
+class ScenarioRequest(BaseModel):
+    """Request model for scenario generation."""
+    user_input: str  # e.g., "ordering food", "job interview"
+    practice_language: str = "en"
+    native_language: str = "en"
+    generate_audio: bool = True  # Whether to generate TTS
+
+
+class ScenarioResponse(BaseModel):
+    """Response model for scenario generation."""
+    scenario_text: str
+    task_instructions: str
+    practice_language: str
+    audio_url: Optional[str] = None  # TTS audio of the scenario

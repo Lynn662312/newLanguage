@@ -2,13 +2,14 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 from .routes import intent, practice, notes
 from .config import AUDIO_DIR
 
 app = FastAPI(
-    title="Oral Practice API",
-    description="Backend API for oral practice application",
+    title="Oral Practice",
+    description="oral practice application",
     version="1.0.0"
 )
 
@@ -25,6 +26,7 @@ app.add_middleware(
 app.mount("/static/audio", StaticFiles(directory=str(AUDIO_DIR)), name="audio")
 
 # Include routers
+# app.include_router(auth.router)  #no user identity
 app.include_router(intent.router)
 app.include_router(practice.router)
 app.include_router(notes.router)
@@ -40,9 +42,15 @@ async def root():
     }
 
 
-@app.get("/api/test")
-async def test():
-    return {"status": "ok"}
+@app.get("/api/practice/prompt")
+async def get_practice_prompt():
+    """
+    Get the practice prompt question after login.
+    """
+    return {
+        "question": "What do you want to practice for today?",
+        "message": "Please select a topic or speak your answer"
+    }
 
 
 if __name__ == "__main__":

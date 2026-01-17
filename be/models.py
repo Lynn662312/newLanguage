@@ -6,7 +6,8 @@ from pydantic import BaseModel
 
 class IntentRequest(BaseModel):
     """Request model for intent recognition."""
-    text: str
+    text: Optional[str] = None
+    audio_file: Optional[str] = None  # Base64 encoded audio or file path
     generate_audio: bool = False
 
 
@@ -32,7 +33,10 @@ class IntentConfirmResponse(BaseModel):
 class PracticeSubmission(BaseModel):
     """Request model for practice submission."""
     text: str
-    topic: Optional[str] = None
+    topic: Optional[str] = "General"
+    practice_language: str
+    native_language: str
+
 
 
 class ErrorItem(BaseModel):
@@ -58,6 +62,8 @@ class NotebookEntry(BaseModel):
     errors: List[ErrorItem]
     difficult_words: List[DifficultWord]
     topic: Optional[str] = None
+    practice_language: str
+    native_language: str
 
 
 class PracticeResponse(BaseModel):
@@ -71,3 +77,59 @@ class NotebookListResponse(BaseModel):
     """Response model for listing all notebooks."""
     notes: List[NotebookEntry]
     count: int
+
+
+# # User Authentication Models
+# class User(BaseModel):
+#     """User model."""
+#     id: str
+#     email: str
+#     username: str
+#     native_language: str  # e.g., "zh", "en", "es"
+#     practice_language: str  # e.g., "en", "es", "fr"
+#     created_at: datetime
+
+
+# class UserRegister(BaseModel):
+#     """User registration request."""
+#     email: EmailStr
+#     username: str
+#     password: str
+#     native_language: str
+#     practice_language: str
+
+
+# class UserLogin(BaseModel):
+#     """User login request."""
+#     email: EmailStr
+#     password: str
+
+
+# class UserResponse(BaseModel):
+#     """User response model."""
+#     id: str
+#     email: str
+#     username: str
+#     native_language: str
+#     practice_language: str
+#     created_at: datetime
+
+
+# class LoginResponse(BaseModel):
+#     """Login response model."""
+#     access_token: str
+#     token_type: str = "bearer"
+#     user: UserResponse
+
+
+# Audio Transcription Models
+class AudioTranscribeRequest(BaseModel):
+    """Request model for audio transcription."""
+    # user_id: str
+    language: Optional[str] = None  # Practice language for STT
+
+
+class AudioTranscribeResponse(BaseModel):
+    """Response model for audio transcription."""
+    text: str
+    language: str

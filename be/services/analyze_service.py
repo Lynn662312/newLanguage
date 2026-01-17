@@ -7,47 +7,67 @@ from ..config import OPENAI_API_KEY, OPENAI_MODEL, OPENAI_BASE_URL
 from ..models import ErrorItem, DifficultWord
 
 
-async def analyze_text(text: str, language: str = "en") -> Dict[str, Any]:
+async def analyze_text(
+    text: str, 
+    practice_language: str = "en",
+    native_language: str = "en"
+) -> Dict[str, Any]:
     """
     Analyze user text using GPT to produce:
     - improved version
     - list of errors
     - list of difficult words
-    - beginner-friendly explanations
+    - beginner-friendly explanations in native language
+    
+    Args:
+        text: Text to analyze
+        practice_language: Language being practiced (e.g., "en", "es")
+        native_language: User's native language for explanations (e.g., "zh", "en")
     """
     if not OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY not set")
     
-    prompt = f"""You are a helpful language coach for {language} learners. Analyze the following text written by a beginner {language} learner and provide:
+    # Language names mapping
+    lang_names = {
+        "en": "English", "es": "Spanish", "fr": "French", "de": "German",
+        "zh": "Chinese", "ja": "Japanese", "ko": "Korean", "pt": "Portuguese",
+        "it": "Italian", "ru": "Russian", "ar": "Arabic"
+    }
+    
+    practice_lang_name = lang_names.get(practice_language, practice_language)
+    native_lang_name = lang_names.get(native_language, native_language)
+    
+    prompt = f"""You are a helpful language coach for {practice_lang_name} learners. 
+Analyze the following text written by a beginner {practice_lang_name} learner (native language: {native_lang_name}) and provide:
 
-1. An improved/corrected version of the text (keep the same meaning and style)
-2. A list of errors with explanations (only if there are errors)
-3. A list of difficult words with simple definitions and examples
-4. Keep all explanations short, simple, and beginner-friendly
+1. An improved/corrected version of the text in {practice_lang_name} (keep the same meaning and style)
+2. A list of errors with explanations in {native_lang_name} (only if there are errors)
+3. A list of difficult words with simple definitions in {native_lang_name} and examples in {practice_lang_name}
+4. Keep all explanations short, simple, and beginner-friendly in {native_lang_name}
 
-User's text:
+User's text in {practice_lang_name}:
 "{text}"
 
 Please respond in the following JSON format:
 {{
-    "improved_text": "the corrected version",
+    "improved_text": "the corrected version in {practice_lang_name}",
     "errors": [
         {{
             "original": "original phrase/word",
             "corrected": "corrected phrase/word",
-            "explanation": "simple explanation"
+            "explanation": "simple explanation in {native_lang_name}"
         }}
     ],
     "difficult_words": [
         {{
-            "word": "word",
-            "definition": "simple definition",
-            "example": "example sentence"
+            "word": "word in {practice_lang_name}",
+            "definition": "simple definition in {native_lang_name}",
+            "example": "example sentence in {practice_lang_name}"
         }}
     ]
 }}
 
-If there are no errors, return an empty errors array. Focus on words that might be challenging for beginners."""
+If there are no errors, return an empty errors array. Focus on words that might be challenging for beginners. All explanations and definitions should be in {native_lang_name}."""
 
     url = f"{OPENAI_BASE_URL}/chat/completions"
     headers = {
@@ -60,7 +80,7 @@ If there are no errors, return an empty errors array. Focus on words that might 
         "messages": [
             {
                 "role": "system",
-                "content": "You are a helpful English teacher. Always respond with valid JSON only."
+                "content": f"You are a helpful {practice_lang_name} language teacher. Always respond with valid JSON only. Explanations should be in {native_lang_name}."
             },
             {
                 "role": "user",

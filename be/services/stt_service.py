@@ -33,9 +33,9 @@ async def speech_to_text(audio_data: bytes, language: Optional[str] = None) -> O
         "xi-api-key": ELEVENLABS_API_KEY
     }
     
-    # Save audio temporarily
-    temp_filename = f"{uuid.uuid4()}.webm"
-    temp_path = AUDIO_DIR / temp_filename
+    # # Save audio temporarily
+    # temp_filename = f"{uuid.uuid4()}.webm"
+    # temp_path = AUDIO_DIR / temp_filename
     
     try:
         # Save audio file

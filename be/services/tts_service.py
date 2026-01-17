@@ -23,7 +23,7 @@ async def text_to_speech(text: str, language: Optional[str] = None) -> Optional[
         return None
     
     # url = f"{ELEVENLABS_BASE_URL}/text-to-speech/{ELEVENLABS_VOICE_ID}"
-    url = f"{ELEVENLABS_BASE_URL}/text-to-speech/default/{ELEVENLABS_VOICE_ID}"
+    url = f"{ELEVENLABS_BASE_URL}/text-to-speech/{ELEVENLABS_VOICE_ID}"
     
     headers = {
         "Accept": "audio/mpeg",

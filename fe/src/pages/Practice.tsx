@@ -12,25 +12,74 @@ const TOPICS = [
 
 const Practice = () => {
   const navigate = useNavigate()
+  
+  // Load initial state from localStorage if available
+  const getSavedSession = () => {
+    try {
+      const saved = localStorage.getItem("active_practice_session")
+      return saved ? JSON.parse(saved) : null
+    } catch (e) {
+      console.error("Failed to load session", e)
+      return null
+    }
+  }
+
+  const savedSession = getSavedSession()
+
   // "setup" = choosing topic, "chat" = active conversation
-  const [phase, setPhase] = useState<"setup" | "chat">("setup")
-  const [mode, setMode] = useState<"voice" | "text">("voice")
+  const [phase, setPhase] = useState<"setup" | "chat">(savedSession?.phase || "setup")
+  const [mode, setMode] = useState<"voice" | "text">(savedSession?.mode || "voice")
   const [status, setStatus] = useState<"idle" | "recording" | "processing" | "speaking">("idle")
   
   const [textInput, setTextInput] = useState("")
-  const [selectedTopic, setSelectedTopic] = useState("")
-  const [conversation, setConversation] = useState<ChatMessage[]>([])
+  const [selectedTopic, setSelectedTopic] = useState(savedSession?.topic || "")
+  const [conversation, setConversation] = useState<ChatMessage[]>(savedSession?.conversation || [])
   const [suggestion, setSuggestion] = useState<{ text: string, visible: boolean } | null>(null)
   
+  // Audio Playback State
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
+  // Handle Audio Playback
+  const toggleAudio = (id: string, url: string) => {
+    if (playingAudioId === id) {
+      // Stop
+      audioRef.current?.pause()
+      setPlayingAudioId(null)
+    } else {
+      // Start new
+      if (audioRef.current) {
+        audioRef.current.pause()
+      }
+      const audio = new Audio(url)
+      audioRef.current = audio
+      setPlayingAudioId(id)
+      audio.play()
+      audio.onended = () => setPlayingAudioId(null)
+    }
+  }
+
   useEffect(() => {
     scrollToBottom()
   }, [conversation])
+
+  // Persist session to localStorage
+  useEffect(() => {
+    if (phase === "chat") {
+      localStorage.setItem("active_practice_session", JSON.stringify({
+        phase,
+        mode,
+        topic: selectedTopic,
+        conversation
+      }))
+    }
+  }, [phase, mode, selectedTopic, conversation])
 
   const startSession = (topic: string) => {
     setSelectedTopic(topic)
@@ -59,8 +108,14 @@ const Practice = () => {
       setStatus("processing")
       // Simulate processing
       setTimeout(() => {
-        // User Message
-        addMessage("user", "Microphone simulation text (I want to go to London)", "mock.mp3")
+        // Create a Mock Blob URL to simulate local recording (not an online link)
+        // In a real app, this comes from MediaRecorder.
+        // We use a dummy blob just to generate a valid blob: URL for the UI.
+        const mockBlob = new Blob([], { type: 'audio/webm' }) 
+        const mockUrl = URL.createObjectURL(mockBlob)
+
+        // User Message with Blob URL
+        addMessage("user", "Microphone simulation text (I want to go to London)", mockUrl)
         setStatus("idle")
         
         // Simulating Real-time Tip
@@ -115,35 +170,50 @@ const Practice = () => {
       topic: selectedTopic,
       conversation: conversation // Save the actual chat
     })
+    
+    // Clear the active session persistence
+    localStorage.removeItem("active_practice_session")
+    
     navigate("/feedback")
   }
 
   // --- SETUP PHASE ---
   if (phase === "setup") {
+    // Pride Colors Configuration
+    const TOPIC_STYLES = [
+        "border-red-200 bg-red-50 hover:bg-red-100/80 text-red-700",       // 1. Red
+        "border-orange-200 bg-orange-50 hover:bg-orange-100/80 text-orange-700", // 2. Orange
+        "border-yellow-300 bg-yellow-50 hover:bg-yellow-100/80 text-yellow-700", // 3. Yellow
+        "border-green-200 bg-green-50 hover:bg-green-100/80 text-green-700"     // 4. Green
+    ]
+
     return (
-      <div className="min-h-screen w-full bg-transparent flex flex-col items-center justify-center p-6 pt-12">
+      <div className="min-h-[80vh] w-full bg-transparent flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-md space-y-8 animate-[fadeIn_0.5s_ease-out]">
           <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-mintText">Pick a Topic</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Pick a Topic</h1>
             <p className="text-gray-500">What do you want to practice today?</p>
           </div>
           
           <div className="grid grid-cols-1 gap-3">
-             {TOPICS.map(topic => (
-               <button
-                 key={topic}
-                 onClick={() => startSession(topic)}
-                 className="p-4 rounded-xl border-2 border-gray-100 hover:border-mint hover:bg-mintBg/20 text-left transition-all group flex items-center justify-between"
-               >
-                 <span className="font-medium text-gray-700 group-hover:text-mintText">{topic}</span>
-                 <span className="text-gray-300 group-hover:text-mint">→</span>
-               </button>
-             ))}
+             {TOPICS.map((topic, index) => {
+               const style = TOPIC_STYLES[index % TOPIC_STYLES.length]
+               return (
+                 <button
+                   key={topic}
+                   onClick={() => startSession(topic)}
+                   className={`p-4 rounded-xl border-2 text-left transition-all group flex items-center justify-between shadow-sm hover:scale-[1.02] ${style}`}
+                 >
+                   <span className="font-bold">{topic}</span>
+                   <span className="opacity-60">→</span>
+                 </button>
+               )
+             })}
              <button
                  onClick={() => startSession("Freestyle")}
-                 className="p-4 rounded-xl border-2 border-dashed border-gray-200 hover:border-mint hover:bg-mintBg/10 text-center text-gray-500 hover:text-mintText font-medium transition-all"
+                 className="p-4 rounded-xl border-2 border-dashed border-purple-200 bg-purple-50/50 hover:bg-purple-50 hover:border-purple-300 text-center text-purple-600 font-medium transition-all"
              >
-                 Just Chat (Freestyle)
+                 Just Chat (Freestyle) 
              </button>
           </div>
         </div>
@@ -153,9 +223,9 @@ const Practice = () => {
 
   // --- CHAT PHASE ---
   return (
-    <div className="fixed inset-0 bg-transparent flex flex-col">
+    <div className="flex-1 w-full max-w-2xl mx-auto flex flex-col bg-white/50 backdrop-blur-sm shadow-xl rounded-2xl my-4 overflow-hidden border border-white/50">
       {/* Chat Header */}
-      <div className="bg-white/80 backdrop-blur-md px-4 py-3 shadow-sm border-b border-gray-100 flex items-center justify-between z-10">
+      <div className="bg-white/90 backdrop-blur px-6 py-4 border-b border-gray-100 flex items-center justify-between z-10 sticky top-0">
         <div>
           <h2 className="font-bold text-gray-800">{selectedTopic}</h2>
           <div className="flex items-center gap-1.5">
@@ -184,11 +254,29 @@ const Practice = () => {
                 : 'bg-white text-gray-800 rounded-bl-none shadow-sm border border-gray-100'
             }`}>
               {msg.audioUrl && (
-                 <div className="flex items-center gap-2 mb-2 bg-black/10 rounded-lg p-2">
-                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="text-xs font-mono opacity-80">Voice Msg</span>
+                 <div className="flex items-center gap-3 mb-2 bg-black/10 rounded-lg p-2 pr-4 min-w-[140px]">
+                    <button 
+                        type="button"
+                        onClick={() => toggleAudio(msg.id, msg.audioUrl!)}
+                        className="w-8 h-8 flex items-center justify-center bg-white rounded-full text-mintDark shadow-sm hover:scale-105 transition-transform shrink-0"
+                    >
+                        {playingAudioId === msg.id ? (
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        ) : (
+                            <svg className="w-3 h-3 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                        )}
+                    </button>
+                    <div className="flex-1 flex flex-col justify-center gap-1">
+                        <div className="h-1 bg-white/30 rounded-full w-full overflow-hidden">
+                             {playingAudioId === msg.id && (
+                                 <div className="h-full bg-white/80 animate-[progress_3s_linear_infinite]" />
+                             )}
+                        </div>
+                        <span className="text-[10px] font-mono opacity-80 flex justify-between">
+                            <span>{playingAudioId === msg.id ? "Playing..." : "Voice Msg"}</span>
+                            <span>0:03</span>
+                        </span>
+                    </div>
                  </div>
               )}
               <p className="leading-relaxed">{msg.text}</p>
@@ -289,6 +377,17 @@ const Practice = () => {
           </form>
         )}
       </div>
+      {/* Animation Styles */}
+      <style>{`
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes progress {
+          0% { width: 0%; }
+          100% { width: 100%; }
+        }
+      `}</style>
     </div>
   )
 }

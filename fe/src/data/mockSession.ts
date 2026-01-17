@@ -91,10 +91,24 @@ export const MOCK_SESSION_TEXT: SessionResult = {
 }
 
 export const saveSession = (data: SessionResult) => {
+    // Save as last session for immediate feedback view
     localStorage.setItem("last_session", JSON.stringify(data))
+
+    // Also append to history
+    const history = getAllSessions()
+    // Avoid duplicates if saving same session multiple times (simple check by ID)
+    if (!history.find(s => s.id === data.id)) {
+        const newHistory = [data, ...history]
+        localStorage.setItem("all_sessions", JSON.stringify(newHistory))
+    }
 }
 
 export const getLastSession = (): SessionResult | null => {
     const data = localStorage.getItem("last_session")
     return data ? JSON.parse(data) : null
+}
+
+export const getAllSessions = (): SessionResult[] => {
+    const data = localStorage.getItem("all_sessions")
+    return data ? JSON.parse(data) : []
 }

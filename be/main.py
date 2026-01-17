@@ -34,7 +34,7 @@ app.include_router(notes.router)
 async def root():
     """Root endpoint."""
     return {
-        "message": "Oral Practice API",
+        "message": "Oral Practice",
         "version": "1.0.0",
         "docs": "/docs"
     }

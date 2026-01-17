@@ -39,4 +39,7 @@ print(f"[Config] ELEVENLABS_VOICE_ID: {ELEVENLABS_VOICE_ID}")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
 OPENAI_BASE_URL = "https://api.openai.com/v1"
 
+# Application Configuration
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+
 

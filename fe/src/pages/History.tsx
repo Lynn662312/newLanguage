@@ -39,9 +39,18 @@ const History = () => {
                 <div 
                     key={session.id}
                     onClick={() => {
-                        // Load this session into "last_session" so Feedback page sees it
-                        localStorage.setItem("last_session", JSON.stringify(session))
-                        navigate("/feedback")
+                        // Load this session into "active_practice_session" so Practice page sees the history
+                        const sessionState = {
+                           phase: 'chat',
+                           mode: session.inputType,
+                           topic: session.topic,
+                           conversation: session.conversation,
+                           sessionFeedback: session.feedback,
+                           nativeLanguage: "English", // Default if missing
+                           secondLanguage: "English"
+                        }
+                        localStorage.setItem("active_practice_session", JSON.stringify(sessionState))
+                        navigate("/practice")
                     }}
                     className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md hover:scale-[1.01] transition-all cursor-pointer border border-transparent hover:border-mint/30 flex justify-between items-center group"
                 >

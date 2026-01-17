@@ -8,10 +8,26 @@ let openai: OpenAI | null = null
 if (API_KEY) {
     openai = new OpenAI({
         apiKey: API_KEY,
-        dangerouslyAllowBrowser: true // Required for client-side usage (Note: Server-side is safer for production)
+        dangerouslyAllowBrowser: true // Required for client-side usage
     })
 } else {
     console.warn("Missing VITE_OPENAI_API_KEY. AI features will not work.")
+}
+
+export const transcribeAudioClient = async (audioBlob: Blob): Promise<string | null> => {
+    if (!openai) return null
+    try {
+        // Convert Blob to File (Whisper needs a filename)
+        const file = new File([audioBlob], "recording.webm", { type: "audio/webm" })
+        const response = await openai.audio.transcriptions.create({
+            file: file,
+            model: "whisper-1",
+        })
+        return response.text
+    } catch (error) {
+        console.error("Client-side Transcription Error:", error)
+        return null
+    }
 }
 
 export interface AIFeedbackResponse {

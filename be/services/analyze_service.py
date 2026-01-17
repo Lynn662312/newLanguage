@@ -1,6 +1,7 @@
 """OpenAI GPT service for text analysis and improvement."""
 import json
 import httpx
+from pathlib import Path
 from typing import List, Dict, Any
 from config import OPENAI_API_KEY, OPENAI_MODEL, OPENAI_BASE_URL
 from models import ErrorItem, DifficultWord
@@ -119,3 +120,44 @@ If there are no errors, return an empty errors array. Focus on words that might 
         if "OPENAI_API_KEY" in error_msg or "API" in error_msg.upper():
             raise Exception("Service configuration error. Please contact support.")
         raise Exception("Failed to analyze text. Please try again.")
+
+async def transcribe_audio(file_path: Path) -> str:
+    """
+    Transcribe audio file using OpenAI Whisper API.
+    """
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY not set")
+
+    url = f"{OPENAI_BASE_URL}/audio/transcriptions"
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}"
+    }
+    
+    # Debug log
+    print(f"Sending audio to OpenAI Whisper: {file_path}")
+    
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            with open(file_path, "rb") as f:
+                files = {"file": (file_path.name, f, "audio/webm")}
+                data = {"model": "whisper-1"}
+                
+                response = await client.post(url, files=files, data=data, headers=headers)
+                
+                # Debug log response
+                print(f"Whisper Status: {response.status_code}")
+                
+                if response.status_code != 200:
+                    print(f"Whisper Error Body: {response.text}")
+                
+                response.raise_for_status()
+                
+                result = response.json()
+                transcript = result.get("text", "")
+                print(f"Whisper Transcript: {transcript}")
+                
+                return transcript
+                
+    except Exception as e:
+        print(f"Transcription failed: {str(e)}")
+        raise Exception(f"Failed to transcribe audio: {str(e)}")

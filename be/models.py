@@ -34,8 +34,8 @@ class PracticeSubmission(BaseModel):
     """Request model for practice submission."""
     text: str
     topic: Optional[str] = "General"
-    practice_language: str
-    native_language: str
+    practice_language: str = "en"
+    native_language: str = "en"
 
 
 

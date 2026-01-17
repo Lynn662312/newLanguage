@@ -6,7 +6,7 @@ const Header = () => {
   return (
     <header className="w-full bg-white border-b border-gray-100 py-4 px-6 fixed top-0 left-0 right-0 z-50 flex items-center justify-between">
       <div className="flex items-center gap-2">
-         <button 
+         {/* <button 
           onClick={() => navigate("/history")}
           className="flex items-center gap-2 group p-2 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
           title="View Past Sessions"
@@ -15,7 +15,7 @@ const Header = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="text-[10px] font-bold tracking-[0.2em] text-gray-400 group-hover:text-gray-600 uppercase">History</span>
-        </button>
+        </button> */}
 
         <button 
           onClick={() => navigate("/faq")}

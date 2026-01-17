@@ -1,5 +1,4 @@
-import { useState, useRef } from "react"
-import { speakText } from "../services/ai"
+import { useTTS } from "../hooks/useTTS"
 
 const FAQS = [
   {
@@ -41,42 +40,10 @@ const FAQS = [
 ]
 
 const FAQ = () => {
-  const [playingId, setPlayingId] = useState<string | null>(null)
-  const [loadingId, setLoadingId] = useState<string | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const { playingId, loadingId, play } = useTTS()
 
-  const handlePlay = async (id: string, text: string) => {
-    if (playingId === id) {
-      audioRef.current?.pause()
-      setPlayingId(null)
-      return
-    }
-
-    if (audioRef.current) {
-      audioRef.current.pause()
-    }
-
-    setLoadingId(id)
-
-    try {
-      const url = await speakText(text)
-      
-      if (url) {
-        const audio = new Audio(url)
-        audioRef.current = audio
-        setPlayingId(id)
-        setLoadingId(null)
-        
-        audio.onended = () => setPlayingId(null)
-        await audio.play()
-      } else {
-         setLoadingId(null)
-      }
-    } catch (e) {
-      console.error("Playback error", e)
-      setLoadingId(null)
-      setPlayingId(null)
-    }
+  const handlePlay = (id: string, text: string) => {
+      play(id, text)
   }
 
   return (

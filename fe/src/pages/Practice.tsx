@@ -65,8 +65,8 @@ const Practice = () => {
 
   const savedSession = getSavedSession()
 
-  // "setup" = choosing topic, "language-setup" = choosing langs, "chat" = active conversation
-  const [phase, setPhase] = useState<"setup" | "language-setup" | "chat">(savedSession?.phase || "setup")
+  // "language-setup" = choosing langs, "setup" = choosing topic, "chat" = active conversation
+  const [phase, setPhase] = useState<"setup" | "language-setup" | "chat">(savedSession?.phase || "language-setup")
   const [mode, setMode] = useState<"voice" | "text">(savedSession?.mode || "voice")
   const [status, setStatus] = useState<"idle" | "recording" | "processing" | "speaking" | "initializing">("idle")
   
@@ -75,6 +75,30 @@ const Practice = () => {
   const [nativeLanguage, setNativeLanguage] = useState(savedSession?.nativeLanguage || "")
   const [secondLanguage, setSecondLanguage] = useState(savedSession?.secondLanguage || "")
   const [conversation, setConversation] = useState<ChatMessage[]>(savedSession?.conversation || [])
+
+  // Speech for phase changes
+  useEffect(() => {
+     let prompt = "";
+     if (phase === 'language-setup') {
+         prompt = "Welcome. Please select your native and practice languages.";
+     } else if (phase === 'setup') {
+         prompt = "Great. Now, what topic would you like to discuss today?";
+     }
+
+     if (prompt) {
+         speakText(prompt).then(url => {
+             if (url) {
+                 const audio = new Audio(url);
+                 if (audioRef.current) {
+                     audioRef.current.pause(); // Stop previous
+                 }
+                 audioRef.current = audio;
+                 audio.play().catch(e => console.error("Auto-play blocked", e));
+             }
+         });
+     }
+  }, [phase]);
+
   const [suggestion, setSuggestion] = useState<{ text: string, visible: boolean } | null>(null)
   
   // Store real accumulated feedback
@@ -152,21 +176,21 @@ const Practice = () => {
     }
   }, [phase, mode, selectedTopic, conversation, sessionFeedback])
 
-  const startSession = (topic: string) => {
-    setSelectedTopic(topic)
-    setPhase("language-setup")
-  }
-
   const confirmLanguageSelection = () => {
     if (!nativeLanguage || !secondLanguage) {
         alert("Please select both languages to continue.")
         return
     }
+    setPhase("setup")
+  }
 
+  const startSession = (topic: string) => {
+    setSelectedTopic(topic)
     setPhase("chat")
+    
     // Initial AI message
     setTimeout(async () => {
-      const text = `Hi! Let's talk about ${selectedTopic}. How are you?`
+      const text = `Hi! Let's talk about ${topic}. How are you?`
       const audioUrl = await speakText(text)
       const msgId = addMessage("ai", text, audioUrl || undefined)
       if (audioUrl) {

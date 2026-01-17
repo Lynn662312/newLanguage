@@ -14,12 +14,13 @@ export const speakText = async (text: string): Promise<string | null> => {
         const client = new ElevenLabsClient({ apiKey });
         const audioStream = await client.textToSpeech.convert("21m00Tcm4TlvDq8ikWAM", {
             text,
-            model_id: "eleven_multilingual_v2",
-            output_format: "mp3_44100_128",
+            modelId: "eleven_multilingual_v2",
+            outputFormat: "mp3_44100_128",
         });
 
         // Convert the stream to a Blob
         const chunks: BlobPart[] = [];
+        // @ts-ignore: The SDK returns a readable stream that is async iterable in Node/modern browsers
         for await (const chunk of audioStream) {
             chunks.push(chunk);
         }

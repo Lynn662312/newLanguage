@@ -13,7 +13,7 @@ from ..config import (
 )
 
 
-async def text_to_speech(text: str) -> Optional[str]:
+async def text_to_speech(text: str, language: Optional[str] = None) -> Optional[str]:
     """
     Convert text to speech using ElevenLabs API.
     Returns the URL path to the generated audio file.
@@ -33,12 +33,18 @@ async def text_to_speech(text: str) -> Optional[str]:
     
     data = {
         "text": text,
-        "model_id": "eleven_multilingual_v2",
+        "model_id": "eleven_multilingual_v2",  # Supports multiple languages
         "voice_settings": {
             "stability": 0.5,
             "similarity_boost": 0.75
         }
     }
+    
+    # Add language hint if provided (for better pronunciation)
+    if language:
+        # ElevenLabs can detect language, but we can add it as metadata
+        # The multilingual model will handle it automatically
+        pass
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:

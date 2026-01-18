@@ -1,102 +1,72 @@
 # NewLanguage - AI Speaking Coach
 
-A modern web application designed to help language learners practice speaking confidently. The app features an AI Coach that provides real-time feedback on grammar, vocabulary, and tone, along with conversational practice.
+> **"newLanguage is an AI-powered personal language tutor that replaces scripted lessons with unscripted, real-time voice conversations and instant feedback."**
 
-## 🚀 Features
+## Inspiration
+We’ve all been there: you spend months on language apps learning vocabulary, but when it’s time to actually speak to a local, you freeze. The gap between *knowing* words and *using* them in conversation is huge. We built **newLanguage** to bridge that gap. We wanted to create a **"Judgment-Free Zone"** where learners can practice speaking loudly, make mistakes, and get corrected instantly without the embarrassment of stumbling in front of a real person.
 
-- **Real-time Voice Practice**: Speak directly to the AI using your microphone (Web Speech API).
-- **Instant AI Feedback**: Get immediate corrections and tips on your grammar and sentence structure.
-- **Conversational AI**: Engage in natural, text, or voice-based conversations with an AI personality.
-- **Session History**: Tracks your progress and saves past practice sessions.
-- **Dual Architecture**:
-  - **Frontend**: Responsive React app with direct AI integration for low latency.
-  - **Backend**: Python FastAPI service for advanced text analysis and Text-to-Speech (ElevenLabs).
+## What it does
+newLanguage is an immersive AI voice coach that lives in your browser.
+1.  **Listens**: You speak naturally into your microphone.
+2.  **Analyzes**: The AI transcribes your speech and instantly checks your grammar, vocabulary, and tone.
+3.  **Corrects**: If you make a mistake (e.g., *"I want go store"*), it pop-ups a helpful "Tip" (*"Try saying: I want to go to the store"*).
+4.  **Responds**: It replies in a hyper-realistic human voice, keeping the conversation going in scenarios like **Job Interviews**, **Ordering Coffee**, or **Travel Directions**.
 
-## 🛠 Tech Stack
+## How we built it
+We adopted a **dual-architecture** approach, prioritizing speed and user experience:
 
-### Frontend (`/fe`)
-- **Framework**: React 19 (Vite)
-- **Styling**: TailwindCSS 4
-- **AI Integration**: OpenAI API (GPT-4o-mini)
-- **Speech**: Browser built-in Web Speech API
-- **State**: React Hooks + LocalStorage Persistence
+-   **Frontend (The Brains - Direct AI)**: Built with **React 19 (Vite)** and **TypeScript**. We engineered the core AI logic to run **directly in the client (`fe/src/services/ai.ts`)** to minimize latency.
+    -   **Direct API Integration**: By calling OpenAI and ElevenLabs directly from the frontend, we reduced response times significantly, making the conversation feel natural and snappy.
+    -   **Speech-to-Text**: Uses OpenAI Whisper (via API) and the Web Speech API for hybrid accuracy.
+    -   **Intelligence**: GPT-4o powers the conversation and the "Teacher" persona that detects errors.
+    -   **Voice**: Integrated **ElevenLabs** API for ultra-realistic text-to-speech.
+    -   **UI**: Designed a custom **Glassmorphism** interface using **TailwindCSS 4**.
 
-### Backend (`/be`)
-- **Framework**: FastAPI (Python)
-- **AI Integration**: OpenAI API
-- **TTS**: ElevenLabs API
-- **Storage**: JSON-based local storage
+-   **Backend (The Foundation)**: A **Python FastAPI** service designed to provide a robust infrastructure.
+    -   **Scalability**: The Python backend handles authentication, user session persistence, and advanced data modeling.
+    -   **Security**: Serving as the secure gateway for future API interactions and keeping sensitive logic protected.
+    -   **Advanced Analytics**: Capable of processing heavy linguistic data that would be too intensive for the browser.
+
+## Challenges we ran into
+-   **Latency vs. Realism**: Routing audio through a backend server initially added too much delay, killing the "conversational" vibe. We pivoted to direct client-side API calls to shave off precious milliseconds.
+-   **Safari vs. Chrome**: The Web Speech API behaves differently across browsers. We had to implement fallback logic to ensure the microphone worked consistently.
+-   **Prompt Engineering**: getting the AI to be a "helpful tutor" rather than just a "chatbot" was tricky. We had to fine-tune the system prompts to ensure it corrects mistakes *gently* without interrupting the flow.
+
+## Accomplishments that we're proud of
+-   **The "Active Feedback Loop"**: It actually works! Seeing the AI catch a grammar mistake in real-time feels magical.
+-   **Premium UI**: We moved away from standard Bootstrap/Material looks to create a custom, animated interface (like our new Language Selector) that feels like a native app.
+-   **Hybrid Architecture**: Successfully designing a system that uses frontend AI for speed while maintaining a Python backend for robustness.
+
+## What we learned
+-   **Voice UI is Hard**: Visual interfaces wait for clicks; Voice interfaces have to handle silence, interruptions, and background noise.
+-   **TypeScript is King**: Moving our logic to strict TypeScript saved us from countless bugs when handling complex JSON responses from the AI.
+
+## What's next for newLanguage
+-   **User Accounts**: Fully integrating the Python backend to save user progress and vocabulary lists permanently.
+-   **Gamification**: Adding streaks and daily goals.
+-   **More Scenarios**: Adding "Medical Emergency", "First Date", and "Business Negotiation" modules.
 
 ---
 
-## 🏁 Getting Started
+## 🛠 Tech Stack & Setup
 
-### 1. Frontend Setup
-The frontend is the main interface where you practice speaking.
-
+### Frontend (`/fe`)
+**Main Logic Hub**: Handles OpenAI/ElevenLabs interactions directly for speed.
 ```bash
 cd fe
-
-# Install dependencies
 npm install
-
-# Setup Environment Variables
-cp .env.example .env.local
-# Edit .env.local and add your VITE_OPENAI_API_KEY
-```
-
-**Run the Frontend:**
-```bash
 npm run dev
 ```
-Access at: `http://localhost:5173`
 
-### 2. Backend Setup
-The backend provides advanced analytics and high-quality voice synthesis.
-
+### Backend (`/be`)
+**Foundation**: FastAPI service for infrastructure and scaling.
 ```bash
 cd be
-
-# Create virtual environment (optional but recommended)
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Setup Environment Variables
-cp .env.example .env
-# Edit .env and add:
-# - OPENAI_API_KEY
-# - ELEVENLABS_API_KEY
-```
-
-**Run the Backend:**
-```bash
 python main.py
-# OR using uvicorn directly:
-uvicorn main:app --reload
 ```
-Access API Docs at: `http://localhost:8000/docs`
 
 ## 🔑 Environment Variables
-
-### Frontend (`fe/.env.local`)
-| Variable | Description |
-|----------|-------------|
-| `VITE_OPENAI_API_KEY` | Your OpenAI API Key for direct client-side feedback. |
-
-### Backend (`be/.env`)
-| Variable | Description |
-|----------|-------------|
-| `OPENAI_API_KEY` | OpenAI Key for backend analysis. |
-| `ELEVENLABS_API_KEY` | Keys for generating high-quality AI voices. |
-| `ELEVENLABS_VOICE_ID`| Specific voice ID to use (Configurable). |
-
-## 📝 Usage
-1. Open the frontend in your browser.
-2. Allow microphone access when prompted.
-3. Click the **Microphone** button to start speaking.
-4. Say a sentence (e.g., *"I want go to the station."*).
-5. Click **Stop** or wait for silence.
-6. The AI will respond conversationally and provide a "Tip" pop-up if it detects errors.
+You need an `.env` file with:
+- `VITE_OPENAI_API_KEY`
+- `VITE_ELEVENLABS_API_KEY`

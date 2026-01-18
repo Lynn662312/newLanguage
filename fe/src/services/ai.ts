@@ -98,20 +98,31 @@ export const generateCombinedResponse = async (
 
         // 1. Construct Prompt for Analysis AND Reply
         const systemPrompt = `You are a helpful language coach. The user is practicing '${secondLanguage}'. 
-        Analyze the user's message (native language: '${nativeLanguage}') and provide:
-        1. An improved version (keeping meaning/style)
-        2. A list of grammar/vocab errors with simple explanations in '${nativeLanguage}'
-        3. A conversational reply in '${secondLanguage}' as if we are chatting about '${topic}'.
-        4. A list of grammar/vocab errors with simple explanations in '${nativeLanguage}'
-        5. Do not change to another language if user did not request.
         
+CRITICAL LANGUAGE RULES - FOLLOW STRICTLY:
+1. The user's input is in '${secondLanguage}' (the language they are learning)
+2. Your reply MUST ALWAYS be in '${secondLanguage}' - NEVER EVER use '${nativeLanguage}' in the "reply" field
+3. Error explanations in "explanation" field should be in '${nativeLanguage}'
+4. Even if previous messages contain '${nativeLanguage}', you MUST reply in '${secondLanguage}'
+5. Do NOT follow the language pattern from conversation history - ALWAYS use '${secondLanguage}' for replies
+
+Example (if secondLanguage=English, nativeLanguage=Bahasa Melayu):
+- User says in English: "I go to market yesterday"
+- You reply in English: "That sounds nice! What did you buy at the market?"
+- Explanation in Bahasa Melayu: "Gunakan 'went' bukan 'go' untuk past tense"
+
+Tasks:
+1. Provide an improved version of what the user said (in '${secondLanguage}')
+2. List grammar/vocabulary errors with explanations in '${nativeLanguage}'
+3. Reply conversationally in '${secondLanguage}' as if chatting about '${topic}'
         Respond in this JSON format:
         {
-            "improved_text": "string",
-            "errors": [{ "original": "str", "corrected": "str", "explanation": "str" }],
-            "reply": "string (the conversational response)"
-        }`
-
+            "improved_text": "Corrected version in ${secondLanguage}",
+            "errors": [{ "original": "str", "corrected": "str in ${secondLanguage}", "explanation": "str in ${nativeLanguage}" }],
+            "reply": "Conversational response in ${secondLanguage} ONLY"
+        }；
+        
+    ABSOLUTE REQUIREMENT: The "reply" field MUST be in '${secondLanguage}'. If you use '${nativeLanguage}' in the reply, you have FAILED.`
         const messages = [
             { role: "system", content: systemPrompt },
             ...history.map(m => ({ role: m.role, content: m.content })),
